@@ -1,0 +1,17 @@
+{
+  "name": "apple-spotify-sync-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension for syncing Apple Music playback to Spotify",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chrome": "^0.0.251",
+    "typescript": "^5.3.3"
+  }
+}
+

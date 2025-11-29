@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Apple Music to Spotify Sync",
+  "version": "1.0.0",
+  "description": "Sync Apple Music playback to Spotify in real-time",
+  "permissions": [
+    "scripting",
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://music.apple.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://music.apple.com/*"],
+      "js": ["appleContent.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["appleInject.js"],
+      "matches": ["https://music.apple.com/*"]
+    }
+  ]
+}
+
