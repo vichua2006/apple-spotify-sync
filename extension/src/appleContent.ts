@@ -6,19 +6,19 @@ import { ExtensionMessage } from "./types";
  */
 
 // Inject the page script into the page context
-async function injectPageScript() {
+function injectPageScript() {
   try {
-    // Fetch the script file and inject it into the page context
-    const response = await fetch(chrome.runtime.getURL("appleInject.js"));
-    const code = await response.text();
-
-    // Inject into page context (not isolated world)
+    // Inject script using src (CSP-compliant) instead of inline textContent
     const script = document.createElement("script");
-    script.textContent = code;
+    script.src = chrome.runtime.getURL("appleInject.js");
+    script.onload = () => {
+      script.remove();
+      console.log("[Apple Sync] Page script injected");
+    };
+    script.onerror = (error) => {
+      console.error("[Apple Sync] Failed to inject page script:", error);
+    };
     (document.head || document.documentElement).appendChild(script);
-    script.remove();
-
-    console.log("[Apple Sync] Page script injected");
   } catch (error) {
     console.error("[Apple Sync] Failed to inject page script:", error);
   }

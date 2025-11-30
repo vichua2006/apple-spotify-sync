@@ -44,6 +44,8 @@ export class SpotifyClient {
    */
   public async handleCallback(code: string, listenerId: string): Promise<TokenInfo> {
     try {
+      console.log(`[Spotify OAuth] Exchanging code for tokens - listenerId: ${listenerId}, redirectUri: ${this.redirectUri}`);
+      
       const response = await axios.post(
         "https://accounts.spotify.com/api/token",
         new URLSearchParams({
@@ -66,12 +68,25 @@ export class SpotifyClient {
       };
 
       this.tokenStore.set(listenerId, tokenInfo);
-      console.log(`Tokens stored for listenerId: ${listenerId}`);
+      console.log(`[Spotify OAuth] Tokens stored successfully for listenerId: ${listenerId}`);
 
       return tokenInfo;
     } catch (error: any) {
-      console.error("Error exchanging code for tokens:", error.response?.data || error.message);
-      throw new Error("Failed to exchange authorization code for tokens");
+      console.error("[Spotify OAuth] Error exchanging code for tokens:");
+      console.error("  Status:", error.response?.status);
+      console.error("  Status Text:", error.response?.statusText);
+      console.error("  Response Data:", JSON.stringify(error.response?.data, null, 2));
+      console.error("  Request URL:", error.config?.url);
+      console.error("  Request Data:", error.config?.data);
+      console.error("  Error Message:", error.message);
+      console.error("  Full Error:", error);
+      
+      const errorMessage = error.response?.data?.error_description 
+        || error.response?.data?.error 
+        || error.message 
+        || "Unknown error";
+      
+      throw new Error(`Failed to exchange authorization code for tokens: ${errorMessage}`);
     }
   }
 
