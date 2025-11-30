@@ -1,12 +1,6 @@
-# Apple Music to Spotify Sync
-
-A Chrome extension and backend server that syncs Apple Music playback to Spotify in real-time.
-
-## Architecture
-
-- **Chrome Extension (MV3)**: Detects Apple Music playback and syncs to Spotify
-- **WebSocket Relay Server**: Broadcasts playback state from host to listeners
-- **Spotify Backend API**: Handles OAuth and controls Spotify playback
+## Implementation
+100% vibes 🎶🎵🎶, at [Cafe Cursor @ Waterloo](https://luma.com/uwaterloo-1)
+credits to [@minicube11](https://github.com/minicube11) for inspo
 
 ## Setup
 
@@ -77,20 +71,6 @@ npm run build
 
 The extension will automatically reload with your new settings.
 
-### Manual Configuration (Alternative)
-
-**Using Chrome DevTools Console:**
-
-1. Open the extension's background page (chrome://extensions → Details → Service worker)
-2. In the console, run:
-```javascript
-// For host
-chrome.storage.local.set({ role: "host", sessionId: "my-session" });
-
-// For listener
-chrome.storage.local.set({ role: "listener", sessionId: "my-session" });
-```
-
 ### Authenticating Spotify (Listener Only)
 
 If using the popup UI, click "Authenticate Spotify" button. Otherwise:
@@ -113,82 +93,6 @@ If using the popup UI, click "Authenticate Spotify" button. Otherwise:
    - Make sure Spotify is open on a device (desktop app, web player, etc.)
    - The extension will automatically sync playback
 
-## Testing on a Single Computer
-
-You can test the entire system on one computer using one of these methods:
-
-### Method 1: Two Chrome Profiles (Recommended)
-
-1. Create a second Chrome profile:
-   - Click your profile icon in Chrome → "Add"
-   - Create a new profile
-
-2. Load the extension in both profiles:
-   - In Profile 1: Set role to "host", sessionId: "test-123"
-   - In Profile 2: Set role to "listener", sessionId: "test-123"
-
-3. Test:
-   - Profile 1: Open Apple Music and play music
-   - Profile 2: Open Spotify and watch it sync
-
-### Method 2: Chrome + Chrome Canary (or Edge)
-
-1. Install Chrome Canary (or use Microsoft Edge)
-2. Load the extension in both browsers
-3. Configure one as host, one as listener (same sessionId)
-4. Test as above
-
-### Method 3: Quick Role Switching (For Development)
-
-1. Use the popup UI to quickly switch between host/listener roles
-2. You'll need to manually switch roles and reload when testing
-3. Note: This is less ideal since you can't be both at once, but useful for quick testing
-
-## Development
-
-### Backend
-
-- Development: `npm run dev` (uses ts-node)
-- Build: `npm run build`
-- Production: `npm start`
-
-### Extension
-
-- Build: `npm run build`
-- Watch mode: `npm run watch`
-
-## Project Structure
-
-```
-apple-spotify-sync/
-├── server/              # Backend server
-│   ├── src/
-│   │   ├── index.ts     # Main server entry
-│   │   ├── websocket.ts # WebSocket relay
-│   │   ├── spotify.ts   # Spotify API client
-│   │   ├── routes.ts    # HTTP endpoints
-│   │   └── types.ts     # TypeScript types
-│   └── package.json
-├── extension/           # Chrome extension
-│   ├── src/
-│   │   ├── background.ts    # Service worker
-│   │   ├── appleContent.ts  # Content script
-│   │   ├── appleInject.ts   # Page script (injected)
-│   │   └── types.ts         # TypeScript types
-│   ├── manifest.json
-│   └── package.json
-└── README.md
-```
-
-## API Endpoints
-
-- `GET /auth/spotify/login?listenerId=XYZ` - Start Spotify OAuth
-- `GET /auth/spotify/callback` - OAuth callback
-- `POST /api/spotify/play-track` - Play a track
-- `POST /api/spotify/pause` - Pause playback
-- `POST /api/spotify/seek` - Seek to position
-- `GET /health` - Health check
-
 ## Notes
 
 - Requires Spotify Premium for playback control
@@ -202,4 +106,3 @@ apple-spotify-sync/
 - **Spotify not playing**: Ensure you have Premium and a device is active
 - **No sync happening**: Verify both host and listener have the same sessionId
 - **MusicKit not detected**: Make sure you're on music.apple.com and music is playing
-
