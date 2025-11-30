@@ -10,6 +10,7 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const INITIAL_RECONNECT_DELAY = 1000; // 1 second
 let shouldAutoReconnect = true; // Control auto-reconnect behavior
+let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null; // Store timeout ID to cancel if needed
 
 // Session configuration
 let sessionId: string | null = null;
@@ -79,6 +80,12 @@ async function loadConfig(): Promise<void> {
  * Connect to WebSocket server
  */
 async function connectWebSocket(): Promise<void> {
+  // Check if auto-reconnect is disabled before attempting connection
+  if (!shouldAutoReconnect) {
+    console.log("[Background] Auto-reconnect disabled, not connecting");
+    return;
+  }
+
   if (ws && ws.readyState === WebSocket.OPEN) {
     return; // Already connected
   }
@@ -143,7 +150,11 @@ async function connectWebSocket(): Promise<void> {
       const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts);
       reconnectAttempts++;
       console.log(`[Background] Reconnecting in ${delay}ms (attempt ${reconnectAttempts})`);
-      setTimeout(() => connectWebSocket(), delay);
+      // Store timeout ID so we can cancel it if disconnect is called
+      reconnectTimeoutId = setTimeout(() => {
+        reconnectTimeoutId = null; // Clear the ID when timeout fires
+        connectWebSocket();
+      }, delay);
     } else if (!shouldAutoReconnect) {
       console.log("[Background] Auto-reconnect disabled, connection stopped");
     } else {
@@ -331,6 +342,14 @@ async function seekToPosition(positionMs: number): Promise<void> {
 function disconnectWebSocket(): void {
   shouldAutoReconnect = false;
   reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // Prevent auto-reconnect
+  
+  // Cancel any pending reconnect timeout
+  if (reconnectTimeoutId !== null) {
+    clearTimeout(reconnectTimeoutId);
+    reconnectTimeoutId = null;
+    console.log("[Background] Cancelled pending reconnect");
+  }
+  
   if (ws) {
     ws.close();
     ws = null;
@@ -342,6 +361,12 @@ function disconnectWebSocket(): void {
  * Start WebSocket connection
  */
 async function startConnection(): Promise<void> {
+  // Cancel any pending reconnect timeout before starting fresh
+  if (reconnectTimeoutId !== null) {
+    clearTimeout(reconnectTimeoutId);
+    reconnectTimeoutId = null;
+  }
+  
   shouldAutoReconnect = true;
   reconnectAttempts = 0;
   await connectWebSocket();
