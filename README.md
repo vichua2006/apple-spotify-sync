@@ -1,6 +1,12 @@
 ## Implementation
+
 100% vibes 🎶🎵🎶, at [Cafe Cursor @ Waterloo](https://luma.com/uwaterloo-1)
-credits to [@minicube11](https://github.com/minicube11) for inspo
+
+credits to [@minicube11](https://github.com/minicube11) for inspo as well as hella good music taste.
+
+websocket server link: U2FsdGVkX1/E65+iUbDR4ZvQt5iZftU8SboIySlQgzevAOOlbLWTG2Zy+WQ91+7EUGu9To2wadD9bjml42MVAw==
+
+gonna [gate](https://encrypt-online.com/) it for now, QA'ing.
 
 ## Setup
 
