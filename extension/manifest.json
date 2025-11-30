@@ -6,11 +6,16 @@
   "permissions": [
     "scripting",
     "storage",
-    "activeTab"
+    "activeTab",
+    "tabs"
   ],
   "host_permissions": [
     "https://music.apple.com/*"
   ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Apple Music to Spotify Sync"
+  },
   "background": {
     "service_worker": "background.js"
   },

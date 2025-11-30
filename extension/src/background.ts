@@ -1,8 +1,8 @@
 import { ExtensionMessage, WsMessage, ApplePlaybackState } from "./types";
 
-// Configuration
-const WS_URL = "ws://localhost:3000";
-const BACKEND_URL = "http://localhost:3000";
+// Configuration - can be overridden via chrome.storage.local
+let WS_URL = "ws://localhost:3000";
+let BACKEND_URL = "http://localhost:3000";
 
 // WebSocket connection
 let ws: WebSocket | null = null;
@@ -41,9 +41,17 @@ function generateUUID(): string {
  */
 async function loadConfig(): Promise<void> {
   try {
-    const result = await chrome.storage.local.get(["sessionId", "role"]);
+    const result = await chrome.storage.local.get(["sessionId", "role", "wsUrl", "backendUrl"]);
     sessionId = result.sessionId || "default-session";
     role = result.role || "host";
+    
+    // Load custom URLs if set, otherwise use defaults
+    if (result.wsUrl) {
+      WS_URL = result.wsUrl;
+    }
+    if (result.backendUrl) {
+      BACKEND_URL = result.backendUrl;
+    }
 
     // Generate and persist listenerId if listener
     if (role === "listener") {
@@ -57,7 +65,7 @@ async function loadConfig(): Promise<void> {
       }
     }
 
-    console.log("[Background] Config loaded:", { sessionId, role, listenerId });
+    console.log("[Background] Config loaded:", { sessionId, role, listenerId, WS_URL, BACKEND_URL });
   } catch (error) {
     console.error("[Background] Failed to load config:", error);
     // Use defaults
@@ -69,9 +77,18 @@ async function loadConfig(): Promise<void> {
 /**
  * Connect to WebSocket server
  */
-function connectWebSocket(): void {
+async function connectWebSocket(): Promise<void> {
   if (ws && ws.readyState === WebSocket.OPEN) {
     return; // Already connected
+  }
+
+  // Reload URLs from storage in case they changed
+  const result = await chrome.storage.local.get(["wsUrl", "backendUrl"]);
+  if (result.wsUrl) {
+    WS_URL = result.wsUrl;
+  }
+  if (result.backendUrl) {
+    BACKEND_URL = result.backendUrl;
   }
 
   console.log("[Background] Connecting to WebSocket:", WS_URL);
@@ -82,7 +99,7 @@ function connectWebSocket(): void {
     reconnectAttempts = 0;
 
     // Send JOIN message
-    if (sessionId && role) {
+    if (sessionId && role && ws) {
       const joinMessage: WsMessage = {
         type: "JOIN",
         sessionId,
@@ -120,15 +137,15 @@ function connectWebSocket(): void {
     console.log("[Background] WebSocket closed");
     ws = null;
 
-    // Attempt reconnect with exponential backoff
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts);
-      reconnectAttempts++;
-      console.log(`[Background] Reconnecting in ${delay}ms (attempt ${reconnectAttempts})`);
-      setTimeout(connectWebSocket, delay);
-    } else {
-      console.error("[Background] Max reconnection attempts reached");
-    }
+      // Attempt reconnect with exponential backoff
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts);
+        reconnectAttempts++;
+        console.log(`[Background] Reconnecting in ${delay}ms (attempt ${reconnectAttempts})`);
+        setTimeout(() => connectWebSocket(), delay);
+      } else {
+        console.error("[Background] Max reconnection attempts reached");
+      }
   };
 }
 
@@ -322,7 +339,7 @@ chrome.runtime.onMessage.addListener(
  */
 async function init() {
   await loadConfig();
-  connectWebSocket();
+  await connectWebSocket();
   console.log("[Background] Extension initialized");
 }
 

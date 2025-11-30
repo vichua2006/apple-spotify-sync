@@ -96,26 +96,33 @@ export function createRoutes(spotifyClient: SpotifyClient): Router {
         });
       }
 
-      let trackUri: string;
+      let trackUri: string | null = null;
 
       if (spotifyTrackId) {
         // Use provided Spotify track ID
         trackUri = spotifyTrackId.startsWith("spotify:track:")
           ? spotifyTrackId
           : `spotify:track:${spotifyTrackId}`;
-      } else if (trackTitle && artistName) {
-        // Search for track
-        trackUri = await spotifyClient.searchTrack(trackTitle, artistName);
+      } else if (trackTitle) {
+        // Search for track by name only (uses top-rated result)
+        trackUri = await spotifyClient.searchTrack(listenerId, trackTitle);
         if (!trackUri) {
           return res.status(404).json({
             error: "Track not found",
-            message: `Could not find "${trackTitle}" by ${artistName} on Spotify`,
+            message: `Could not find "${trackTitle}" on Spotify`,
           });
         }
       } else {
         return res.status(400).json({
           error: "Missing track information",
-          message: "Either spotifyTrackId or both trackTitle and artistName are required",
+          message: "Either spotifyTrackId or trackTitle is required",
+        });
+      }
+
+      // At this point, trackUri must be a string (not null)
+      if (!trackUri) {
+        return res.status(400).json({
+          error: "Invalid track URI",
         });
       }
 

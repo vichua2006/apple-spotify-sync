@@ -1,3 +1,5 @@
+import { WebSocket } from "ws";
+
 /**
  * Apple Music playback state as detected from MusicKit
  */

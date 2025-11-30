@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Chrome extension for syncing Apple Music playback to Spotify",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node remove-exports.js",
     "watch": "tsc --watch"
   },
   "keywords": [],

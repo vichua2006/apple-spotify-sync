@@ -33,7 +33,8 @@ PORT=3000
 4. Get Spotify API credentials:
    - Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
    - Create a new app
-   - Add `http://localhost:3000/auth/spotify/callback` to Redirect URIs
+   - **Important**: Spotify doesn't allow `localhost` redirect URIs
+   - use ngrok to get a public URL for the redirect URI
    - Copy Client ID and Client Secret to `.env`
 
 5. Start the server:
@@ -66,11 +67,19 @@ npm run build
 
 ## Configuration
 
-### Setting Extension Role
+### Using the Popup UI (Recommended)
 
-The extension needs to know if it's running as a "host" (playing Apple Music) or "listener" (syncing to Spotify).
+1. Click the extension icon in Chrome's toolbar
+2. Select your role (Host or Listener)
+3. Enter a Session ID (same ID for both host and listener)
+4. If you're a listener, click "Authenticate Spotify" to connect your account
+5. Click "Save Configuration"
 
-**Option 1: Using Chrome DevTools Console**
+The extension will automatically reload with your new settings.
+
+### Manual Configuration (Alternative)
+
+**Using Chrome DevTools Console:**
 
 1. Open the extension's background page (chrome://extensions → Details → Service worker)
 2. In the console, run:
@@ -82,11 +91,9 @@ chrome.storage.local.set({ role: "host", sessionId: "my-session" });
 chrome.storage.local.set({ role: "listener", sessionId: "my-session" });
 ```
 
-**Option 2: Programmatically**
-
-You can set these values from any script with access to `chrome.storage.local`.
-
 ### Authenticating Spotify (Listener Only)
+
+If using the popup UI, click "Authenticate Spotify" button. Otherwise:
 
 1. Get your `listenerId` from chrome.storage.sync (it's auto-generated)
 2. Open in browser: `http://localhost:3000/auth/spotify/login?listenerId=YOUR_LISTENER_ID`
@@ -96,15 +103,46 @@ You can set these values from any script with access to `chrome.storage.local`.
 ## Usage
 
 1. **Host Setup**:
-   - Set role to "host" and set a sessionId
+   - Set role to "host" and set a sessionId (use the popup UI)
    - Open [Apple Music Web](https://music.apple.com)
    - Start playing music
 
 2. **Listener Setup**:
    - Set role to "listener" with the same sessionId as host
-   - Authenticate with Spotify (see above)
+   - Authenticate with Spotify (click "Authenticate Spotify" in popup)
    - Make sure Spotify is open on a device (desktop app, web player, etc.)
    - The extension will automatically sync playback
+
+## Testing on a Single Computer
+
+You can test the entire system on one computer using one of these methods:
+
+### Method 1: Two Chrome Profiles (Recommended)
+
+1. Create a second Chrome profile:
+   - Click your profile icon in Chrome → "Add"
+   - Create a new profile
+
+2. Load the extension in both profiles:
+   - In Profile 1: Set role to "host", sessionId: "test-123"
+   - In Profile 2: Set role to "listener", sessionId: "test-123"
+
+3. Test:
+   - Profile 1: Open Apple Music and play music
+   - Profile 2: Open Spotify and watch it sync
+
+### Method 2: Chrome + Chrome Canary (or Edge)
+
+1. Install Chrome Canary (or use Microsoft Edge)
+2. Load the extension in both browsers
+3. Configure one as host, one as listener (same sessionId)
+4. Test as above
+
+### Method 3: Quick Role Switching (For Development)
+
+1. Use the popup UI to quickly switch between host/listener roles
+2. You'll need to manually switch roles and reload when testing
+3. Note: This is less ideal since you can't be both at once, but useful for quick testing
 
 ## Development
 

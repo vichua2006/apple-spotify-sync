@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer } from "http";
 import dotenv from "dotenv";
+import cors from "cors";
 import { WebSocketRelay } from "./websocket";
 import { SpotifyClient } from "./spotify";
 import { createRoutes } from "./routes";
@@ -30,6 +31,23 @@ const SPOTIFY_REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI!;
 
 // Initialize Express app
 const app = express();
+
+// Configure CORS to allow Chrome extension origins
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests from Chrome extensions (chrome-extension://*)
+    if (!origin || origin.startsWith('chrome-extension://')) {
+      callback(null, true);
+    } else {
+      // Also allow requests from localhost and ngrok for development
+      callback(null, true);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(express.json());
 
 // Create HTTP server

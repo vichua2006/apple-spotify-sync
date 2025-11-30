@@ -134,23 +134,29 @@ export class SpotifyClient {
 
   /**
    * Search for a track on Spotify
+   * Requires authentication - uses the listener's access token
+   * 
+   * TODO: Improve search matching - currently just searches by track name and uses top result.
+   * Consider adding artist matching, fuzzy matching, or confidence scoring for better accuracy.
    */
-  public async searchTrack(title: string, artist: string): Promise<string | null> {
+  public async searchTrack(listenerId: string, title: string): Promise<string | null> {
     try {
-      // Use the first access token we can find (for search, we don't need a specific listener)
-      // Actually, search doesn't require authentication, but let's use a token if available
-      const query = `track:${title} artist:${artist}`;
+      const accessToken = await this.getAccessToken(listenerId);
+      // Search by track name only, Spotify will return top-rated/most popular result
       const response = await this.apiClient.get("/search", {
         params: {
-          q: query,
+          q: title,
           type: "track",
           limit: 1,
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
       const tracks = response.data.tracks?.items;
       if (tracks && tracks.length > 0) {
-        return tracks[0].uri; // Returns spotify:track:ID format
+        return tracks[0].uri; // Returns spotify:track:ID format (top result)
       }
 
       return null;
