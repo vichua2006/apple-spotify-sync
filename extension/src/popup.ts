@@ -181,9 +181,71 @@ function openSpotifyAuth() {
   chrome.tabs.create({ url: authUrl });
 }
 
+// Start connection
+async function startConnection() {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "CONNECTION_CONTROL",
+      action: "start",
+    });
+    
+    if (response && response.success) {
+      showStatus("Connection started", "success");
+      updateConnectionStatus();
+    } else {
+      showStatus("Failed to start connection", "error");
+    }
+  } catch (error) {
+    console.error("Failed to start connection:", error);
+    showStatus("Failed to start connection", "error");
+  }
+}
+
+// Stop connection
+async function stopConnection() {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "CONNECTION_CONTROL",
+      action: "stop",
+    });
+    
+    if (response && response.success) {
+      showStatus("Connection stopped", "success");
+      updateConnectionStatus();
+    } else {
+      showStatus("Failed to stop connection", "error");
+    }
+  } catch (error) {
+    console.error("Failed to stop connection:", error);
+    showStatus("Failed to stop connection", "error");
+  }
+}
+
+// Update connection status
+async function updateConnectionStatus() {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: "CONNECTION_CONTROL",
+      action: "status",
+    });
+    
+    const statusDiv = document.getElementById("connection-status") as HTMLDivElement;
+    if (response && response.connected) {
+      statusDiv.textContent = "Connected";
+      statusDiv.style.color = "#1DB954";
+    } else {
+      statusDiv.textContent = "Not connected";
+      statusDiv.style.color = "#666";
+    }
+  } catch (error) {
+    console.error("Failed to get connection status:", error);
+  }
+}
+
 // Event listeners
 document.addEventListener("DOMContentLoaded", () => {
   loadConfig();
+  updateConnectionStatus();
 
   // Role buttons
   document.getElementById("role-host")!.addEventListener("click", () => {
@@ -201,5 +263,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Spotify auth button
   document.getElementById("auth-spotify")!.addEventListener("click", openSpotifyAuth);
+
+  // Connection control buttons
+  document.getElementById("start-connection")!.addEventListener("click", startConnection);
+  document.getElementById("stop-connection")!.addEventListener("click", stopConnection);
+
+  // Update connection status periodically
+  setInterval(updateConnectionStatus, 2000);
 });
 

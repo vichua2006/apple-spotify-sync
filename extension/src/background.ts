@@ -9,6 +9,7 @@ let ws: WebSocket | null = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const INITIAL_RECONNECT_DELAY = 1000; // 1 second
+let shouldAutoReconnect = true; // Control auto-reconnect behavior
 
 // Session configuration
 let sessionId: string | null = null;
@@ -137,15 +138,17 @@ async function connectWebSocket(): Promise<void> {
     console.log("[Background] WebSocket closed");
     ws = null;
 
-      // Attempt reconnect with exponential backoff
-      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-        const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts);
-        reconnectAttempts++;
-        console.log(`[Background] Reconnecting in ${delay}ms (attempt ${reconnectAttempts})`);
-        setTimeout(() => connectWebSocket(), delay);
-      } else {
-        console.error("[Background] Max reconnection attempts reached");
-      }
+    // Attempt reconnect with exponential backoff (only if auto-reconnect is enabled)
+    if (shouldAutoReconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      const delay = INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts);
+      reconnectAttempts++;
+      console.log(`[Background] Reconnecting in ${delay}ms (attempt ${reconnectAttempts})`);
+      setTimeout(() => connectWebSocket(), delay);
+    } else if (!shouldAutoReconnect) {
+      console.log("[Background] Auto-reconnect disabled, connection stopped");
+    } else {
+      console.error("[Background] Max reconnection attempts reached");
+    }
   };
 }
 
@@ -323,12 +326,49 @@ async function seekToPosition(positionMs: number): Promise<void> {
 }
 
 /**
- * Listen for messages from content script
+ * Stop WebSocket connection
+ */
+function disconnectWebSocket(): void {
+  shouldAutoReconnect = false;
+  reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // Prevent auto-reconnect
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+  console.log("[Background] WebSocket connection stopped");
+}
+
+/**
+ * Start WebSocket connection
+ */
+async function startConnection(): Promise<void> {
+  shouldAutoReconnect = true;
+  reconnectAttempts = 0;
+  await connectWebSocket();
+}
+
+/**
+ * Listen for messages from content script and popup
  */
 chrome.runtime.onMessage.addListener(
-  (message: ExtensionMessage, sender, sendResponse) => {
+  (message: any, sender, sendResponse) => {
     if (message.source === "APPLE_SYNC" && message.type === "APPLE_STATE") {
       handleAppleState(message.payload);
+    } else if (message.type === "CONNECTION_CONTROL") {
+      if (message.action === "start") {
+        startConnection().then(() => {
+          sendResponse({ success: true, status: "connected" });
+        }).catch((error) => {
+          sendResponse({ success: false, error: error.message });
+        });
+        return true; // Keep channel open for async response
+      } else if (message.action === "stop") {
+        disconnectWebSocket();
+        sendResponse({ success: true, status: "disconnected" });
+      } else if (message.action === "status") {
+        const isConnected = ws !== null && ws.readyState === WebSocket.OPEN;
+        sendResponse({ success: true, connected: isConnected });
+      }
     }
     return true; // Keep channel open for async response
   }
@@ -339,8 +379,8 @@ chrome.runtime.onMessage.addListener(
  */
 async function init() {
   await loadConfig();
-  await connectWebSocket();
-  console.log("[Background] Extension initialized");
+  // Don't auto-connect on startup - user must click "Start Connection"
+  console.log("[Background] Extension initialized. Use popup to start connection.");
 }
 
 // Initialize on service worker startup
