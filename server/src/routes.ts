@@ -28,7 +28,14 @@ export function createRoutes(spotifyClient: SpotifyClient): Router {
     const state = req.query.state as string; // listenerId
     const error = req.query.error as string;
 
+    console.log("[OAuth Callback] Received callback request:");
+    console.log("  Query params:", JSON.stringify(req.query, null, 2));
+    console.log("  Code:", code ? "present" : "missing");
+    console.log("  State (listenerId):", state || "missing");
+    console.log("  Error:", error || "none");
+
     if (error) {
+      console.error("[OAuth Callback] Spotify returned an error:", error);
       return res.status(400).send(`
         <html>
           <body>
@@ -41,11 +48,14 @@ export function createRoutes(spotifyClient: SpotifyClient): Router {
     }
 
     if (!code || !state) {
+      console.error("[OAuth Callback] Missing required parameters - code:", !!code, "state:", !!state);
       return res.status(400).send(`
         <html>
           <body>
             <h1>Invalid Request</h1>
             <p>Missing code or state parameter.</p>
+            <p>Code: ${code ? "present" : "missing"}</p>
+            <p>State: ${state ? "present" : "missing"}</p>
             <p>You can close this tab.</p>
           </body>
         </html>
@@ -53,7 +63,9 @@ export function createRoutes(spotifyClient: SpotifyClient): Router {
     }
 
     try {
+      console.log("[OAuth Callback] Processing callback for listenerId:", state);
       await spotifyClient.handleCallback(code, state);
+      console.log("[OAuth Callback] Successfully authenticated listenerId:", state);
       res.send(`
         <html>
           <body>
@@ -64,7 +76,10 @@ export function createRoutes(spotifyClient: SpotifyClient): Router {
         </html>
       `);
     } catch (error: any) {
-      console.error("OAuth callback error:", error);
+      console.error("[OAuth Callback] Error processing callback:");
+      console.error("  Error type:", error.constructor.name);
+      console.error("  Error message:", error.message);
+      console.error("  Error stack:", error.stack);
       res.status(500).send(`
         <html>
           <body>
