@@ -72,14 +72,7 @@ export class SpotifyClient {
 
       return tokenInfo;
     } catch (error: any) {
-      console.error("[Spotify OAuth] Error exchanging code for tokens:");
-      console.error("  Status:", error.response?.status);
-      console.error("  Status Text:", error.response?.statusText);
-      console.error("  Response Data:", JSON.stringify(error.response?.data, null, 2));
-      console.error("  Request URL:", error.config?.url);
-      console.error("  Request Data:", error.config?.data);
       console.error("  Error Message:", error.message);
-      console.error("  Full Error:", error);
       
       const errorMessage = error.response?.data?.error_description 
         || error.response?.data?.error 

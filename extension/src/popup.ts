@@ -269,6 +269,12 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("stop-connection")!.addEventListener("click", stopConnection);
 
   // Update connection status periodically
-  setInterval(updateConnectionStatus, 2000);
+  const statusIntervalId = setInterval(updateConnectionStatus, 3000);
+  // Add cleanup  
+  window.addEventListener("beforeunload", () => {  
+    if (statusIntervalId) {  
+      clearInterval(statusIntervalId);  
+    }  
+  });  
 });
 

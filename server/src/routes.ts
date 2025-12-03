@@ -30,7 +30,7 @@ export function createRoutes(spotifyClient: SpotifyClient): Router {
 
     console.log("[OAuth Callback] Received callback request:");
     console.log("  Query params:", JSON.stringify(req.query, null, 2));
-    console.log("  Code:", code ? `${code.substring(0, 20)}...` : "missing");
+    console.log("  Code:", code ? "present" : "missing");
     console.log("  State (listenerId):", state || "missing");
     console.log("  Error:", error || "none");
 

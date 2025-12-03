@@ -341,7 +341,6 @@ async function seekToPosition(positionMs: number): Promise<void> {
  */
 function disconnectWebSocket(): void {
   shouldAutoReconnect = false;
-  reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // Prevent auto-reconnect
   
   // Cancel any pending reconnect timeout
   if (reconnectTimeoutId !== null) {
