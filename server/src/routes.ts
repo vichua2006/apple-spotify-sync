@@ -118,19 +118,25 @@ export function createRoutes(spotifyClient: SpotifyClient): Router {
         trackUri = spotifyTrackId.startsWith("spotify:track:")
           ? spotifyTrackId
           : `spotify:track:${spotifyTrackId}`;
-      } else if (trackTitle) {
-        // Search for track by name only (uses top-rated result)
-        trackUri = await spotifyClient.searchTrack(listenerId, trackTitle);
+      } else if (trackTitle && artistName) {
+        // Search for track using title and artist with scoring algorithm
+        trackUri = await spotifyClient.searchTrack(listenerId, trackTitle, artistName);
         if (!trackUri) {
           return res.status(404).json({
             error: "Track not found",
-            message: `Could not find "${trackTitle}" on Spotify`,
+            message: `Could not find "${trackTitle}" by ${artistName} on Spotify`,
           });
         }
+      } else if (trackTitle) {
+        // Fallback: none for now (TODO:)
+        return res.status(400).json({
+          error: "Missing artist information",
+          message: "Both trackTitle and artistName are required for search",
+        });
       } else {
         return res.status(400).json({
           error: "Missing track information",
-          message: "Either spotifyTrackId or trackTitle is required",
+          message: "Either spotifyTrackId or both trackTitle and artistName are required",
         });
       }
 

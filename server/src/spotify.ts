@@ -141,21 +141,68 @@ export class SpotifyClient {
   }
 
   /**
-   * Search for a track on Spotify
-   * Requires authentication - uses the listener's access token
-   * 
-   * TODO: Improve search matching - currently just searches by track name and uses top result.
-   * Consider adding artist matching, fuzzy matching, or confidence scoring for better accuracy.
+   * Calculate logarithmic popularity score for tie-breaking
+   * Returns a score based on log10 of popularity (0-100 -> logarithmic scale)
    */
-  public async searchTrack(listenerId: string, title: string): Promise<string | null> {
+  private getLogPopularityScore(spotifyTrack: any): number {
+    const popularity = spotifyTrack.popularity || 0;
+    return Math.log10(popularity + 1);
+  }
+
+  /**
+   * Score a track match based on artist and title similarity
+   * Returns score from 0-80 (40 points for artist, 40 points for title)
+   */
+  private scoreTrackMatch(
+    searchTitle: string,
+    searchArtist: string,
+    spotifyTrack: any
+  ): number {
+    const spotifyTitle = (spotifyTrack.name || "").toLowerCase();
+    const spotifyArtists = (spotifyTrack.artists || []).map((a: any) => (a.name || "").toLowerCase());
+    const searchTitleLower = searchTitle.toLowerCase();
+    const searchArtistLower = searchArtist.toLowerCase();
+
+    let artistScore = 0;
+    for (const artist of spotifyArtists) {
+      if (artist === searchArtistLower) {
+        artistScore = 40; // Exact match
+        break;
+      } else if (artist.includes(searchArtistLower) || searchArtistLower.includes(artist)) {
+        artistScore = Math.max(artistScore, 25); // Partial match
+      }
+    }
+
+    // Score title matching (40 points max)
+    let titleScore = 0;
+    if (spotifyTitle === searchTitleLower) {
+      titleScore = 40; // Exact match
+    } else if (spotifyTitle.includes(searchTitleLower) || searchTitleLower.includes(spotifyTitle)) {
+      titleScore = 25; // Partial match
+    }
+
+    return artistScore + titleScore;
+  }
+
+  /**
+   * Search for a track on Spotify using title and artist
+   * Uses scoring algorithm to find the best match
+   */
+  public async searchTrack(
+    listenerId: string,
+    title: string,
+    artist: string
+  ): Promise<string | null> {
     try {
       const accessToken = await this.getAccessToken(listenerId);
-      // Search by track name only, Spotify will return top-rated/most popular result
+      
+      // Use field qualifiers for more precise search
+      const query = `track:${title} artist:${artist}`;
       const response = await this.apiClient.get("/search", {
         params: {
-          q: title,
+          q: query,
           type: "track",
-          limit: 1,
+          limit: 10, // Get multiple results to score
         },
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -163,11 +210,37 @@ export class SpotifyClient {
       });
 
       const tracks = response.data.tracks?.items;
-      if (tracks && tracks.length > 0) {
-        return tracks[0].uri; // Returns spotify:track:ID format (top result)
+      if (!tracks || tracks.length === 0) {
+        return null;
       }
 
-      return null;
+      // Score all tracks and find the best match
+      let bestTrack = tracks[0];
+      let bestScore = this.scoreTrackMatch(title, artist, tracks[0]);
+      const tiedTracks: any[] = [tracks[0]];
+
+      for (let i = 1; i < tracks.length; i++) {
+        const score = this.scoreTrackMatch(title, artist, tracks[i]);
+        if (score > bestScore) {
+          bestScore = score;
+          bestTrack = tracks[i];
+          tiedTracks.length = 0;
+          tiedTracks.push(tracks[i]);
+        } else if (score === bestScore) {
+          tiedTracks.push(tracks[i]);
+        }
+      }
+
+      // If multiple tracks have the same score, pick the one with highest logarithmic popularity
+      if (tiedTracks.length > 1) {
+        bestTrack = tiedTracks.reduce((best, current) => {
+          const bestPopularity = this.getLogPopularityScore(best);
+          const currentPopularity = this.getLogPopularityScore(current);
+          return currentPopularity > bestPopularity ? current : best;
+        });
+      }
+
+      return bestTrack.uri; // Returns spotify:track:ID format
     } catch (error: any) {
       console.error("Error searching track:", error.response?.data || error.message);
       throw new Error("Failed to search track on Spotify");
