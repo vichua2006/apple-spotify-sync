@@ -11,6 +11,8 @@ const MAX_RECONNECT_ATTEMPTS = 10;
 const INITIAL_RECONNECT_DELAY = 1000; // 1 second
 let shouldAutoReconnect = true; // Control auto-reconnect behavior
 let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null; // Store timeout ID to cancel if needed
+let heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
+const HEARTBEAT_INTERVAL_MS = 30000; // Send heartbeat every 30 seconds
 
 // Session configuration
 let sessionId: string | null = null;
@@ -25,7 +27,7 @@ let lastSyncCallTime: number = 0;
 let lastSeekTime: number = 0;
 const SYNC_THROTTLE_MS = 200; // Max sync calls every 200ms
 const SEEK_THROTTLE_MS = 1000; // Max seek calls every 1 second
-const DRIFT_THRESHOLD_MS = 750; // Seek if drift > 750ms
+const DRIFT_THRESHOLD_MS = 3750; // Seek if drift > 750ms
 
 /**
  * Generate a UUID for listenerId
@@ -117,6 +119,16 @@ async function connectWebSocket(): Promise<void> {
       ws.send(JSON.stringify(joinMessage));
       console.log("[Background] Sent JOIN message:", joinMessage);
     }
+
+    // Start heartbeat
+    if (heartbeatIntervalId) {
+      clearInterval(heartbeatIntervalId);
+    }
+    heartbeatIntervalId = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "PING" }));
+      }
+    }, HEARTBEAT_INTERVAL_MS);
   };
 
   ws.onmessage = (event) => {
@@ -129,6 +141,8 @@ async function connectWebSocket(): Promise<void> {
         if (role === "listener") {
           handleHostStateUpdate(message.payload);
         }
+      } else if (message.type === "PONG") {
+        // Heartbeat response received
       } else if (message.type === "ERROR") {
         console.error("[Background] WebSocket error:", message.message);
       }
@@ -144,6 +158,12 @@ async function connectWebSocket(): Promise<void> {
   ws.onclose = () => {
     console.log("[Background] WebSocket closed");
     ws = null;
+
+    // Stop heartbeat
+    if (heartbeatIntervalId) {
+      clearInterval(heartbeatIntervalId);
+      heartbeatIntervalId = null;
+    }
 
     // Attempt reconnect with exponential backoff (only if auto-reconnect is enabled)
     if (shouldAutoReconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
@@ -347,6 +367,12 @@ function disconnectWebSocket(): void {
     clearTimeout(reconnectTimeoutId);
     reconnectTimeoutId = null;
     console.log("[Background] Cancelled pending reconnect");
+  }
+
+  // Stop heartbeat
+  if (heartbeatIntervalId) {
+    clearInterval(heartbeatIntervalId);
+    heartbeatIntervalId = null;
   }
   
   if (ws) {

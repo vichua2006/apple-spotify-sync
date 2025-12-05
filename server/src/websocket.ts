@@ -8,12 +8,21 @@ import { ClientMeta, WsMessage, ApplePlaybackState } from "./types";
 export class WebSocketRelay {
   private wss: WebSocketServer;
   private sessions: Map<string, Set<ClientMeta>> = new Map();
+  private lastHeartbeat: Map<WebSocket, number> = new Map();
+  private heartbeatCheckInterval: NodeJS.Timeout | null = null;
+  private readonly HEARTBEAT_TIMEOUT_MS = 60000; // 60 seconds
 
   constructor(server: HttpServer) {
     this.wss = new WebSocketServer({ server });
 
+    // Check for stale connections every 30 seconds
+    this.heartbeatCheckInterval = setInterval(() => {
+      this.checkHeartbeats();
+    }, 30000);
+
     this.wss.on("connection", (ws: WebSocket) => {
       console.log("New WebSocket connection");
+      this.lastHeartbeat.set(ws, Date.now());
 
       let clientMeta: ClientMeta | null = null;
 
@@ -27,6 +36,11 @@ export class WebSocketRelay {
             });
           } else if (message.type === "STATE_UPDATE") {
             this.handleStateUpdate(ws, message);
+          } else if (message.type === "PING") {
+            this.lastHeartbeat.set(ws, Date.now());
+            ws.send(JSON.stringify({ type: "PONG" }));
+          } else if (message.type === "PONG") {
+            this.lastHeartbeat.set(ws, Date.now());
           } else {
             console.warn("Unknown message type:", message);
             ws.send(
@@ -49,6 +63,7 @@ export class WebSocketRelay {
 
       ws.on("close", () => {
         console.log("WebSocket connection closed");
+        this.lastHeartbeat.delete(ws);
         if (clientMeta) {
           this.removeClient(clientMeta);
         }
@@ -56,10 +71,35 @@ export class WebSocketRelay {
 
       ws.on("error", (error) => {
         console.error("WebSocket error:", error);
+        this.lastHeartbeat.delete(ws);
         if (clientMeta) {
           this.removeClient(clientMeta);
         }
       });
+    });
+
+    this.wss.on("close", () => {
+      if (this.heartbeatCheckInterval) {
+        clearInterval(this.heartbeatCheckInterval);
+        this.heartbeatCheckInterval = null;
+      }
+    });
+  }
+
+  private checkHeartbeats(): void {
+    const now = Date.now();
+    const staleConnections: WebSocket[] = [];
+
+    this.lastHeartbeat.forEach((lastTime, ws) => {
+      if (now - lastTime > this.HEARTBEAT_TIMEOUT_MS) {
+        staleConnections.push(ws);
+      }
+    });
+
+    staleConnections.forEach((ws) => {
+      console.log("Client heartbeat timeout, closing connection");
+      this.lastHeartbeat.delete(ws);
+      ws.terminate();
     });
   }
 

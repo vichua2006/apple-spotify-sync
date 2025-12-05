@@ -19,7 +19,9 @@ export interface ApplePlaybackState {
  */
 export type WsMessage =
   | { type: "JOIN"; sessionId: string; role: "host" | "listener"; listenerId?: string }
-  | { type: "STATE_UPDATE"; sessionId: string; payload: ApplePlaybackState };
+  | { type: "STATE_UPDATE"; sessionId: string; payload: ApplePlaybackState }
+  | { type: "PING" }
+  | { type: "PONG" };
 
 /**
  * Metadata for a WebSocket client connection

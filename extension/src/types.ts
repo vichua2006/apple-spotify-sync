@@ -19,7 +19,9 @@ export type WsMessage =
   | { type: "JOIN"; sessionId: string; role: "host" | "listener"; listenerId?: string }
   | { type: "STATE_UPDATE"; sessionId: string; payload: ApplePlaybackState }
   | { type: "JOINED"; sessionId: string; role: "host" | "listener" }
-  | { type: "ERROR"; message: string };
+  | { type: "ERROR"; message: string }
+  | { type: "PING" }
+  | { type: "PONG" };
 
 /**
  * Extension message types for chrome.runtime communication
